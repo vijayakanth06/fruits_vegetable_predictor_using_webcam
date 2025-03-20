@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Fruit and Vegetable Recognition</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        h1 {
+            color: #4CAF50;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #video {
+            width: 50%;
+            height: 50%;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Fruit and Vegetable Recognition</h1>
+
+    <!-- Live Webcam Feed -->
+    <img id="video" src="{{ url_for('video_feed') }}" alt="Webcam feed" />
+
+    <button id="captureBtn">Capture & Predict</button>
+
+    <div id="result"></div>
+
+    <script>
+        document.getElementById("captureBtn").addEventListener("click", async () => {
+            const response = await fetch("/predict", { method: "POST" });
+            const data = await response.json();
+
+            if (data.prediction) {
+                document.getElementById("result").innerText = `Prediction: ${data.prediction}`;
+            } else if (data.error) {
+                document.getElementById("result").innerText = `Error: ${data.error}`;
+            } else {
+                document.getElementById("result").innerText = "No match found.";
+            }
+        });
+    </script>
+</body>
+</html>
