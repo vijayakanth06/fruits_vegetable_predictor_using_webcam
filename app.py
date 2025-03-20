@@ -9,9 +9,15 @@ from groq import Groq
 
 app = Flask(__name__)
 CORS(app)
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 # Load Groq API key
-GROQ_API_KEY = "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"
+
 client = Groq(api_key=GROQ_API_KEY)
 
 # Load labels from labels.txt
