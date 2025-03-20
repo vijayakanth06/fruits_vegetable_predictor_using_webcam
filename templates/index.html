@@ -26,11 +26,11 @@
         button:hover {
             background-color: #45a049;
         }
-        #video {
+        video, canvas {
             width: 50%;
-            height: 50%;
             border-radius: 5px;
             margin-top: 10px;
+            display: block;
         }
         #result {
             margin-top: 20px;
@@ -42,26 +42,67 @@
 <body>
     <h1>Fruit and Vegetable Recognition</h1>
 
-    <!-- Live Webcam Feed -->
-    <img id="video" src="{{ url_for('video_feed') }}" alt="Webcam feed" />
-
+    <!-- Live Webcam Stream -->
+    <video id="video" autoplay></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+    
     <button id="captureBtn">Capture & Predict</button>
-
     <div id="result"></div>
 
     <script>
-        document.getElementById("captureBtn").addEventListener("click", async () => {
-            const response = await fetch("/predict", { method: "POST" });
-            const data = await response.json();
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const captureButton = document.getElementById('captureBtn');
+        const result = document.getElementById('result');
 
-            if (data.prediction) {
-                document.getElementById("result").innerText = `Prediction: ${data.prediction}`;
-            } else if (data.error) {
-                document.getElementById("result").innerText = `Error: ${data.error}`;
-            } else {
-                document.getElementById("result").innerText = "No match found.";
+        // Access webcam and start video stream
+        async function startWebcam() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+            } catch (error) {
+                console.error('Error accessing webcam:', error);
+                result.innerText = `Error accessing webcam: ${error.message}`;
             }
+        }
+
+        // Capture frame and send to Flask backend
+        captureButton.addEventListener('click', async () => {
+            // Capture frame from video
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Convert canvas to Blob
+            canvas.toBlob(async (blob) => {
+                const formData = new FormData();
+                formData.append('image', blob, 'frame.jpg');
+
+                try {
+                    // Send image to Flask backend
+                    const response = await fetch('/predict', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+                    if (data.prediction) {
+                        result.innerText = `Prediction: ${data.prediction}`;
+                    } else if (data.error) {
+                        result.innerText = `Error: ${data.error}`;
+                    } else {
+                        result.innerText = 'No match found.';
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    result.innerText = `Error: ${error.message}`;
+                }
+            }, 'image/jpeg');
         });
+
+        // Start webcam when page loads
+        startWebcam();
     </script>
 </body>
 </html>
