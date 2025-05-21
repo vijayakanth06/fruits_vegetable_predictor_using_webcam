@@ -7,7 +7,7 @@ from flask_cors import CORS
 from sentence_transformers import SentenceTransformer, util
 from groq import Groq
 from dotenv import load_dotenv
-
+from flask import Flask, render_template, request, jsonify
 # Load environment variables
 load_dotenv()
 
@@ -60,7 +60,7 @@ def recognize_fruit_or_vegetable(image):
                 },
                 {
                     "type": "text",
-                    "text": f"Identify the fruit or vegetable in the image. Return only the name or the closest match from this list: {label_list}."
+                    "text": f"Identify the fruit or vegetable in the image. Return only the name or the closest match from this list: {label_list}.Do not include any other text or explanation. Just give the name of the fruit or vegetabe name only as output"
                 }
             ]
         }
@@ -68,10 +68,10 @@ def recognize_fruit_or_vegetable(image):
 
     try:
         completion = client.chat.completions.create(
-            model="llama-3.2-11b-vision-preview",
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=messages,
-            temperature=0.3,
-            max_tokens=50,
+            temperature=0.4,
+            max_tokens=100,
             top_p=1,
             stream=False,
         )
@@ -86,8 +86,8 @@ def recognize_fruit_or_vegetable(image):
         similarity_scores = util.pytorch_cos_sim(pred_embedding, label_embeddings)[0]
         best_match_idx = similarity_scores.argmax().item()
         best_match_score = similarity_scores[best_match_idx].item()
-
-        if best_match_score > 0.7:
+        
+        if best_match_score > 0.5:
             return labels[best_match_idx]
         else:
             return None
@@ -96,7 +96,7 @@ def recognize_fruit_or_vegetable(image):
 
 # Flask route to predict from uploaded frame
 @app.route("/predict", methods=["POST"])
-def predict():
+def predictmodel():
     try:
         file = request.files["image"]
         image = cv2.imdecode(np.frombuffer(file.read(), np.uint8), cv2.IMREAD_COLOR)
@@ -110,12 +110,12 @@ def predict():
             return jsonify({"prediction": ""})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-# Flask route to serve HTML page
-@app.route("/")
-def index():
+    
+# Home route
+@app.route("/", methods=["GET"])
+def home():
     return render_template("index.html")
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
-    app.run(host="0.0.0.0", port=port,debug=False)
+    app.run(host="0.0.0.0", port=port,debug=True)
