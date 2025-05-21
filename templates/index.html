@@ -26,6 +26,10 @@
         button:hover {
             background-color: #45a049;
         }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
         video, canvas {
             width: 50%;
             border-radius: 5px;
@@ -36,17 +40,39 @@
             margin-top: 20px;
             font-size: 18px;
             font-weight: bold;
+            min-height: 24px;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #4CAF50;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .warning {
+            color: #ff9800;
+            font-style: italic;
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
     <h1>Fruit and Vegetable Recognition</h1>
+    <p class="warning">Note: First request may take 30-60 seconds while the server wakes up.</p>
 
     <!-- Live Webcam Stream -->
     <video id="video" autoplay></video>
     <canvas id="canvas" style="display:none;"></canvas>
     
     <button id="captureBtn">Capture & Predict</button>
+    <div class="spinner" id="spinner"></div>
     <div id="result"></div>
 
     <script>
@@ -54,51 +80,84 @@
         const canvas = document.getElementById('canvas');
         const captureButton = document.getElementById('captureBtn');
         const result = document.getElementById('result');
+        const spinner = document.getElementById('spinner');
 
         // Access webcam and start video stream
         async function startWebcam() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                });
                 video.srcObject = stream;
             } catch (error) {
                 console.error('Error accessing webcam:', error);
-                result.innerText = `Error accessing webcam: ${error.message}`;
+                result.innerText = `Error: ${error.message}`;
+                captureButton.disabled = true;
             }
         }
 
         // Capture frame and send to Flask backend
         captureButton.addEventListener('click', async () => {
-            // Capture frame from video
-            const context = canvas.getContext('2d');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            // Show loading state
+            result.innerText = "Processing...";
+            spinner.style.display = 'block';
+            captureButton.disabled = true;
 
-            // Convert canvas to Blob
-            canvas.toBlob(async (blob) => {
+            try {
+                // Capture frame
+                const context = canvas.getContext('2d');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                // Convert to blob
+                const blob = await new Promise((resolve) => {
+                    canvas.toBlob(resolve, 'image/jpeg', 0.8);
+                });
+
                 const formData = new FormData();
                 formData.append('image', blob, 'frame.jpg');
 
-                try {
-                    // Send image to Flask backend
-                    const response = await fetch('/predict', {
-                        method: 'POST',
-                        body: formData
-                    });
+                // Add timeout (60 seconds for first request)
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-                    const data = await response.json();
-                    if (data.prediction) {
-                        result.innerText = `Prediction: ${data.prediction}`;
-                    } else if (data.error) {
-                        result.innerText = `Error: ${data.error}`;
-                    } else {
-                        result.innerText = 'No match found.';
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    result.innerText = `Error: ${error.message}`;
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData,
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || errorData.details || `Server error: ${response.status}`);
                 }
-            }, 'image/jpeg');
+
+                const data = await response.json();
+                
+                if (data.status === "error") {
+                    throw new Error(data.error || data.details || "Unknown error");
+                }
+
+                result.innerText = data.prediction ? `Prediction: ${data.prediction}` : "No match found";
+                
+            } catch (error) {
+                console.error('Error:', error);
+                result.innerText = `Error: ${error.message}`;
+                
+                // Special handling for timeout
+                if (error.name === 'AbortError') {
+                    result.innerText = "Request timed out (60s). The server might be waking up. Try again.";
+                }
+            } finally {
+                spinner.style.display = 'none';
+                captureButton.disabled = false;
+            }
         });
 
         // Start webcam when page loads

@@ -1,8 +1,8 @@
-flask
-flask-cors
-opencv-python-headless
-sentence-transformers
-numpy
-python-dotenv
-groq
-gunicorn
+flask==2.3.2
+flask-cors==4.0.0
+opencv-python-headless==4.7.0.72
+sentence-transformers==2.2.2
+numpy==1.24.3
+python-dotenv==1.0.0
+groq==0.3.0
+gunicorn==20.1.0
