@@ -3,7 +3,5 @@ flask-cors
 opencv-python-headless
 sentence-transformers
 numpy
-Pillow
 python-dotenv
 groq
-gunicorn
