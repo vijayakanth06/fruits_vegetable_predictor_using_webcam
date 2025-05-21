@@ -81,7 +81,7 @@
 
                 try {
                     // Send image to Flask backend
-                    const response = await fetch('/predict', {
+                    const response = await fetch('https://fruits-vegetable-predictor-using-webcam.onrender.com/predict', {
                         method: 'POST',
                         body: formData
                     });
