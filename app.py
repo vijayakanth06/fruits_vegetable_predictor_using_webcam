@@ -76,7 +76,7 @@ def recognize_fruit_or_vegetable(image):
                     },
                     {
                         "type": "text",
-                        "text": f"Identify the fruit or vegetable in the image. Return only the name or the closest match from this list: {label_list}. Do not include any other text or explanation. Just give the name of the fruit or vegetable as output."
+                        "text": f"Identify the fruit or vegetable in the image. Return only the name or the closest match from this list: {label_list}. Do not include any other text or explanation.check accurately whether it is pomegranate or onion because most of the time you are makeing mistake so make sure to give the accuurate response. Just give the name of the fruit or vegetable as output."
                     }
                 ]
             }
